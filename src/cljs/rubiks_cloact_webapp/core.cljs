@@ -33,7 +33,7 @@
 (def layout [[nil :top nil nil] [:left :front :right :back] [nil :bottom nil nil]])
 
 (defn rubiks-cube [a [rcs path]]
-  (into [:table]
+  (into [:table {:style {:display :inline-block}}]
         (map (fn [table-row]
                (into [:tr]
                      (mapv (fn [x] [:td (if x [rubiks-cube-face rcs (conj path x)])])
@@ -46,9 +46,11 @@
      (swap! app-state assoc :current-state (-> response :body :transformed-rcs)))))
 
 (defn show-solution [a [app-state path]]
-  (into [:div {:style {:background-color "#ccc" :padding "10px"}}]
+  (into [:div {:style {:background-color "#ccc" :padding "10px"}}
+         [:h3  "click to see the state of the cube after applying all the transformations up-to and including clicked transformation" [:br]]]
         (map (fn [[move-id [color orientation]]]
-               [:span {:on-click (fn [& s]
+               [:span {:title (str (name color) " " (name orientation))
+                       :on-click (fn [& s]
                                    (apply-algorithm (@app-state :rubiks-cube-state) (take (inc move-id) (:solution @app-state))))
                        :style {:margin-right "5px" :font-size "12pt" :width "1em" :height "1em" :margin-left "5px" :margin-top "3px" :margin-bottom "3px" :display :inline-block :border (str "10px solid " (name color)) :padding "2px"}} (if (= orientation :clockwise) "\u21BB" "\u21BA")])
              (map vector (range) (get-in @app-state path)))))
