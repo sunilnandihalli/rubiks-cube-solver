@@ -35,6 +35,7 @@
   ([rot-color cur-color] (next-color rot-color cur-color :clockwise))
   ([rot-color cur-color rot-dir]
      (second (drop-while #(not= cur-color %) (cycle (orientation-colors rot-color rot-dir))))))
+
 (let [transition-map (into {} (for [x (apply concat sides) y [:clockwise :counter-clockwise]]
                                 [[x y] (let [oclrs (orientation-colors x y)]
                                          (into {x x} (map vector oclrs (drop 1 (cycle oclrs)))))]))]
@@ -63,6 +64,7 @@
 
 
 (def top-left-coords {:top [0 1] :front [1 1] :left [1 0] :right [1 2] :back [1 3] :bottom [2 1]})
+
 (defn coords [rubiks-cube-state display-side {:keys [up-side down-side right-side left-side] :as side-orientation} canvas [top left :as top-left-coords]]
    (let [cur-side-canvas-coords (for [[r-id r] (map-indexed vector [[[up-side left-side] [up-side] [up-side right-side]]
                                                                     [[left-side] [] [right-side]]

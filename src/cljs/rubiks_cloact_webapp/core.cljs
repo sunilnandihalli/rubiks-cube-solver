@@ -46,16 +46,12 @@
      (swap! app-state assoc :current-state (-> response :body :transformed-rcs)))))
 
 (defn show-solution [a [app-state path]]
-  (into [:div]
-        (map (fn [moves-chunk]
-               (into [:div]
-                     (map (fn [[move-id [color orientation]]]
-                            [:span {:on-click (fn [& s]
-                                                (apply-algorithm (@app-state :rubiks-cube-state) (take (inc move-id) (:solution @app-state))))
-                                    :style {:border "1px solid black" :padding "5px" :margin "2px"
-                                            :width "15px" :height "15px" :background-color color}} (if (= orientation :clockwise) "\u21BB" "\u21BA")])
-                           moves-chunk)))
-             (partition-all 30 (map vector (range) (get-in @app-state path))))))
+  (into [:div {:style {:background-color "#ccc" :padding "10px"}}]
+        (map (fn [[move-id [color orientation]]]
+               [:span {:on-click (fn [& s]
+                                   (apply-algorithm (@app-state :rubiks-cube-state) (take (inc move-id) (:solution @app-state))))
+                       :style {:margin-right "5px" :font-size "12pt" :width "1em" :height "1em" :margin-left "5px" :margin-top "3px" :margin-bottom "3px" :display :inline-block :border (str "10px solid " (name color)) :padding "2px"}} (if (= orientation :clockwise) "\u21BB" "\u21BA")])
+             (map vector (range) (get-in @app-state path)))))
 
 (defn shuffle-rubiks-cube []
   (go
