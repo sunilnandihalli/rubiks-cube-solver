@@ -3,7 +3,7 @@
   :url "http://example.com/FIXME"
 
   :dependencies [[org.clojure/clojure "1.5.1"]
-                 [org.clojure/tools.reader "0.8.2"]
+                 [org.clojure/tools.reader "0.8.3"]
                  [org.clojure/math.combinatorics "0.0.7"]
                  [org.clojure/core.logic "0.8.5"]
                  [jarohen/chord "0.2.2"]
@@ -13,10 +13,10 @@
                  [compojure "1.1.6"]
                  [cheshire "5.2.0"]
                  ;; CLJS
-                 [org.clojure/clojurescript "0.0-2138"]
+                 [org.clojure/clojurescript "0.0-2156"]
                  [org.clojure/core.async "0.1.267.0-0d7780-alpha"]
                  [cljs-http "0.1.3"]
-                 [reagent "0.2.0"]]
+                 [reagent "0.3.0"]]
 
   :plugins [[lein-cljsbuild "1.0.1"]
             [lein-ring "0.8.7"]
@@ -35,4 +35,4 @@
                                    :output-dir "resources/public/js/out"
                                    :optimizations :none
                                    :source-map true
-                                   :externs ["cloact/externs/react.js"]}}]})
+                                   :externs ["js/scenejs/scenejs.js"]}}]})

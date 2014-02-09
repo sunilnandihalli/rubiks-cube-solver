@@ -21,7 +21,7 @@
 
 (defn square-color-choice [a [rcs path]]
   (let [c (get-in @rcs path)]
-    (if-not *editable* [:span {:style {:margin "2px" :border "1px solid black" :width "10px" :height "10px" :display :inline-block :background-color (if (= c :not-set) :black c)}}]
+    (if-not *editable* [:span {:style {:margin "2px" :border "1px solid black" :width "30px" :height "30px" :display :inline-block :background-color (if (= c :not-set) :black c)}}]
       (let [pc (choices @rcs path)]
         (into [:select {:value c
                         :on-change (fn [s]
@@ -32,12 +32,14 @@
 
 (def layout [[nil :top nil nil] [:left :front :right :back] [nil :bottom nil nil]])
 
-(defn rubiks-cube [a [rcs path]]
-  (into [:table {:style {:display :inline-block}}]
-        (map (fn [table-row]
-               (into [:tr]
-                     (mapv (fn [x] [:td (if x [rubiks-cube-face rcs (conj path x)])])
-                           table-row))) layout)))
+(defn rubiks-cube [a [rcs path id]]
+  [:div
+   (into [:table {:style {:display :inline-block}}]
+         (map (fn [table-row]
+                (into [:tr]
+                      (mapv (fn [x] [:td (if x [rubiks-cube-face rcs (conj path x)])])
+                            table-row))) layout))
+   [:canvas {:id id :width 600 :height 400}]])
 
 (defn apply-algorithm [rcs moves]
   (go
@@ -52,7 +54,8 @@
                [:span {:title (str (name color) " " (name orientation))
                        :on-click (fn [& s]
                                    (apply-algorithm (@app-state :rubiks-cube-state) (take (inc move-id) (:solution @app-state))))
-                       :style {:margin-right "5px" :font-size "12pt" :width "1em" :height "1em" :margin-left "5px" :margin-top "3px" :margin-bottom "3px" :display :inline-block :border (str "10px solid " (name color)) :padding "2px"}} (if (= orientation :clockwise) "\u21BB" "\u21BA")])
+                       :style {:margin-right "5px" :font-size "12pt" :width "1em" :height "1em" :margin-left "5px" :margin-top "3px" :margin-bottom "3px"
+                               :display :inline-block :border (str "10px solid " (name color)) :padding "2px"}} (if (= orientation :clockwise) "\u21BB" "\u21BA")])
              (map vector (range) (get-in @app-state path)))))
 
 (defn shuffle-rubiks-cube []
@@ -62,24 +65,33 @@
                            (seq (-> response :body :random-rcs))))]
      (swap! app-state assoc :rubiks-cube-state rcs :solution []))))
 
-(defn random-rubiks-cube [])
 (defn solve-rubiks-cube []
   (go
    (let [req-data {:json-params (select-keys @app-state [:rubiks-cube-state])}
          response (<! (http/post "/solve_rcs" req-data))
          moves (->> response :body :moves (mapv #(mapv keyword %)))]
      (swap! app-state assoc :solution moves))))
-(defn show-editable-rubiks-cube [])
+
 (defn main-page [a [app-state path]]
   [:div
-   [rubiks-cube app-state (into path [:rubiks-cube-state])]
-   [rubiks-cube app-state (into path [:current-state])]
+   [rubiks-cube app-state (into path [:rubiks-cube-state]) "shuffled-state"]
+   [rubiks-cube app-state (into path [:current-state]) "state-after-selected-move"]
    [show-solution app-state (into path [:solution])]
    [:button {:on-click shuffle-rubiks-cube} "shuffle"]
-   ;[:button {:on-click random-rubiks-cube} "random rubiks cube"]
-   [:button {:on-click solve-rubiks-cube} "show solution"]
-   ;[:button {:on-click show-editable-rubiks-cube} "enter my own rubiks configuration"]
-   ])
+   [:button {:on-click solve-rubiks-cube} "show solution"]])
 
+(defn render-teapot [canvas-id]
+  (js/console.log "")
+  (js/SceneJS.createScene
+   (clj->js {:type "scene" :id (str "scene-" canvas-id) :canvasId canvas-id
+             :nodes [{:type "lookAt" :eye {:x 5 :y 5 :z 5}
+                      :nodes [{:type "scale" :x 1.0 :y 1.0 :z 1.0 :id (str "tscale-" canvas-id)
+                               :nodes [{:type "material" :color {:r 0.3 :g 0.3 :b 1.0}
+                                        :nodes [{:type "rotate" :id (str "rotate-" canvas-id) :y 1.0 :angle 0
+                                                 :nodes [{:type "prims/teapot" :id (str "teapot-" canvas-id)}]}]}]}]}]})))
 (defn ^:export run []
-  (reagent/render-component [main-page app-state []] (.-body js/document)))
+  (js/SceneJS.setDebugConfigs (clj->js {:shading {:whitewash true :logScripts true}
+                                        :webgl {:logTrace true}
+                                        :pluginPath "js/scenejs/plugins"}))
+  (reagent/render-component [main-page app-state []] (.-body js/document))
+  (mapv render-teapot ["shuffled-state"  "state-after-selected-move"]))
