@@ -20,8 +20,18 @@
 
   :plugins [[lein-cljsbuild "1.0.1"]
             [lein-ring "0.8.7"]
-            [lein-pdo "0.1.1"]]
+            [lein-pdo "0.1.1"]
+            [com.keminglabs/cljx "0.3.2"]]
 
+  :cljx {:builds [{:source-paths ["src/cljx"]
+                   :output-path "target/generated/clj"
+                   :rules :clj}
+
+                  {:source-paths ["src/cljx"]
+                   :output-path "target/generated/cljs"
+                   :rules :cljs}]}
+
+  :hooks [cljx.hooks]
   :aliases {"dev" ["pdo" "cljsbuild" "auto" "dev," "ring" "server-headless"]}
 
   :ring {:handler rubiks-cloact-webapp.core/app

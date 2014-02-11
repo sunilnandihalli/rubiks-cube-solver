@@ -89,6 +89,7 @@
                                :nodes [{:type "material" :color {:r 0.3 :g 0.3 :b 1.0}
                                         :nodes [{:type "rotate" :id (str "rotate-" canvas-id) :y 1.0 :angle 0
                                                  :nodes [{:type "prims/teapot" :id (str "teapot-" canvas-id)}]}]}]}]}]})))
+(defn render-rubiks-cube [canvas-id rcs])
 (defn ^:export run []
   (js/SceneJS.setDebugConfigs (clj->js {:shading {:whitewash true :logScripts true}
                                         :webgl {:logTrace true}
