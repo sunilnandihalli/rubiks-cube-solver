@@ -37,7 +37,7 @@
   :ring {:handler rubiks-cloact-webapp.core/app
          :init    rubiks-cloact-webapp.core/init}
 
-  :source-paths ["src/clj"]
+  :source-paths ["src/clj" "target/generated/clj"]
 
   :cljsbuild {:builds [{:id "dev"
                         :source-paths ["src/cljs"]
