@@ -40,7 +40,7 @@
   :source-paths ["src/clj" "target/generated/clj"]
 
   :cljsbuild {:builds [{:id "dev"
-                        :source-paths ["src/cljs"]
+                        :source-paths ["src/cljs" "target/generated/cljs"]
                         :compiler {:output-to "resources/public/js/rubiks_cloact_webapp.js"
                                    :output-dir "resources/public/js/out"
                                    :optimizations :none

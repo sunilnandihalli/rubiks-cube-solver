@@ -1,15 +1,19 @@
-(ns rubiks-cloact-webapp.solver
-  (:require [clojure.math.combinatorics :as cmb]
-            [clojure.pprint :as p]))
-
-
+(ns rubiks-cloact-webapp.solver)
 (def sides [[:green :blue] [:white :yellow] [:red :orange]])
-
+(defn cartesian-product [& [x & xs]]
+  (if x (for [a x a-cp (cartesian-product xs)]
+          (vec (cons a a-cp))) [(list)]))
+(defn combinations [[x & xs] n]
+  (cond
+   (= n 0) [[]]
+   (nil? x) []
+   :default (concat (map #(cons x %) (combinations xs (dec n)))
+                    (combinations xs n))))
 (def unscrambled-state (into {}
                              (map #(vector (set %) (into {} (map vector % %)))
                                   (concat
-                                   (mapcat #(apply cmb/cartesian-product %) (cmb/combinations sides 2))
-                                   (apply cmb/cartesian-product sides)))))
+                                   (mapcat #(apply cartesian-product %) (combinations sides 2))
+                                   (apply cartesian-product sides)))))
 
 (def human-comprehendible-sides [:front :right :left :up :down :back])
 
@@ -331,7 +335,7 @@
     (into {}
           (map (fn [[_ loc-col-map]]
                  [(set (vals loc-col-map)) loc-col-map])
-               (apply merge-with #(merge-with (fn [& x] (Exception. "key collision at second level")) %1 %2)
+               (apply merge-with #(merge-with (fn [& x] nil) %1 %2)
                       (map face-locs (keys frcs)))))))
 
 (defn rev-algo [s]

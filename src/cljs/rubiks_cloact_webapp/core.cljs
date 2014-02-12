@@ -1,6 +1,7 @@
 (ns rubiks-cloact-webapp.core
   (:require-macros [cljs.core.async.macros :refer [go alt!]])
   (:require
+   [rubiks-cloact-webapp.solver :as s]
    [goog.net.XhrIo :as xhr]
    [chord.client :refer [ws-ch]]
    [reagent.core :as reagent :refer [atom]]
