@@ -1,53 +1,58 @@
 (ns rubiks-cloact-webapp.core
   (:require
-   [rubiks-cloact-webapp.client-solve :as cs]
+   [rubiks-cloact-webapp.solver :as s]
    [reagent.core :as reagent :refer [atom]]))
 
 ;; Lets you do (prn "stuff") to the console
 (enable-console-print!)
 
-(comment (into {}
-               (map (fn [[s c]] [s (vec (repeat 3 (vec (repeat 3 c))))])
-                    {:front :white :back :yellow :top :red :bottom :orange :right :green :left :blue})))
+
 (defn new-random-init-state []
-  (let [x (cs/random-rubiks-cube)]
-    {:shuffled-state x :current-state x :solution [] :current-move-id 0}))
+  (let [x (s/scrambled-rubiks-cube)]
+    {:shuffled-state x :current-state x :solution []
+     :last-move-applied -1 :orientation (s/full-orientation {:front :green :right :red})}))
 
 (def app-state (atom (new-random-init-state)))
 
 (defn current-state-updater [move-id]
   (fn [&s]
-    (swap! app-state (fn [{:keys [current-state current-move-id solution] :as app-state-val}]
+    (swap! app-state (fn [{:keys [current-state last-move-applied solution] :as app-state-val}]
                        (assoc app-state-val
-                         :current-state (cs/apply-algorithm current-state (take (inc move-id) (drop current-move-id solution)))
-                         :current-move-id move-id)))))
+                         :current-state (let [moves (cond
+                                                     (< last-move-applied move-id) (subvec solution (inc last-move-applied) (inc move-id))
+                                                     (> last-move-applied move-id) (mapv (fn [[mid [c o]]] [mid [c (opposite-orientation o)]])
+                                                                                         (rseq (subvec solution (inc move-id) (inc last-move-applied))))
+                                                     :default [])]
+                                          (s/apply-algorithm current-state moves))
+                         :last-move-applied move-id)))))
 
 (defn solve-rubiks-cube []
   (let [{:keys [shuffled-state]} @app-state
-        solution (cs/solve-rubiks-cube shuffled-state)]
-    (swap! app-state (fn [app-state-val] (assoc app-state-val :solution solution :current-move-id 0)))))
+        solution (s/solve shuffled-state)]
+    (swap! app-state (fn [app-state-val] (assoc app-state-val :solution solution :last-move-applied -1)))))
 
 (defn shuffle-rubiks-cube []
-  (swap! app-state (fn [& _] (new-random-init-state))))
+  (js/console.log "shuffle-rubiks-cube called")
+  (swap! app-state (fn [& _] (new-random-init-state)))
+  (js/console.log @app-state))
 
 (defn choices [rcs path]
   [:not-set :red :blue :green :yellow :white :orange])
 
-(defn square-color-choice [a [rcs path]]
-  (let [c (get-in @rcs path)]
-    [:span {:style {:margin "2px" :border "1px solid black" :width "30px" :height "30px" :display :inline-block :background-color (if (= c :not-set) :black c)}}]))
+(defn square-color [a [c]]
+  [:span {:style {:margin "2px" :border "1px solid black" :width "30px" :height "30px" :display :inline-block :background-color c}}])
 
-(defn rubiks-cube-face [a [rcs path]]
-  (into [:div] (map (fn [row] (into [:div] (map #(do [square-color-choice rcs (into path [row %])]) (range 3)))) (range 3))))
+(defn rubiks-cube-face [a [f]]
+  (into [:div] (map (fn [row] (into [:div] (map #(do [square-color %]) row))) f)))
 
 (def layout [[nil :top nil nil] [:left :front :right :back] [nil :bottom nil nil]])
 
-(defn rubiks-cube [a [rcs path id]]
+(defn rubiks-cube [a [frcs id]]
   [:div
    (into [:table {:style {:display :inline-block}}]
          (map (fn [table-row]
                 (into [:tr]
-                      (mapv (fn [x] [:td (if x [rubiks-cube-face rcs (conj path x)])])
+                      (mapv (fn [x] [:td (if x [rubiks-cube-face (frcs x)])])
                             table-row))) layout))
    [:canvas {:id id :width 600 :height 400}]])
 
@@ -55,7 +60,6 @@
   (into [:div {:style {:background-color "#ccc" :padding "10px"}}
          [:h3  "click to see the state of the cube after applying all the transformations up-to and including clicked transformation" [:br]]]
         (map (fn [[move-id [color orientation] :as x]]
-               (js/console.log x)
                [:span {:title (str move-id " " (name color) " " (name orientation))
                        :on-click (current-state-updater move-id)
                        :style {:margin-right "5px" :font-size "12pt" :width "1em" :height "1em" :margin-left "5px" :margin-top "3px" :margin-bottom "3px"

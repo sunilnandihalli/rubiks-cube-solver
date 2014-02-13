@@ -350,21 +350,5 @@
 (defn orientation-from-face-rep [frcs]
   (into {} (map (fn [[k v]] [k (get-in v [1 1])]) frcs)))
 
-(defn apply-algorithm-face-rep [frcs moves]
-  (let [ormp (orientation-from-face-rep frcs)
-        rcs (from-faces frcs)
-        trcs (apply-algorithm rcs (map second moves))]
-    (to-faces trcs ormp)))
-
-
-(defn solve-rubiks-cube-face-rep [frcs]
-  (->> frcs from-faces solve meta :moves-applied (map-indexed #(vector %1 %2))))
-
-(defn random-rubiks-cube-face-rep
-  ([ormp] (to-faces (scrambled-rubiks-cube) ormp))
-  ([] (to-faces (scrambled-rubiks-cube))))
-
-
-#_(def cnts (vec
-             (repeatedly 1000 (fn [] (let [x (scrambled-rubiks-cube :num-scrambles 20)]
-                                      (mapv #(-> (solve x %) meta :moves-applied count) [:green :red :blue :orange :white :yellow]))))))
+(defn solve-rubiks-cube [rcs]
+  (->> rcs solve meta :moves-applied (map-indexed #(vector %1 %2))))
