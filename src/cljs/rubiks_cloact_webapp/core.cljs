@@ -10,14 +10,12 @@
                (map (fn [[s c]] [s (vec (repeat 3 (vec (repeat 3 c))))])
                     {:front :white :back :yellow :top :red :bottom :orange :right :green :left :blue})))
 (defn new-random-init-state []
-  ;(js/console.log (clj->js :new-random-init-state))
   (let [x (cs/random-rubiks-cube)]
     {:shuffled-state x :current-state x :solution [] :current-move-id 0}))
 
 (def app-state (atom (new-random-init-state)))
 
 (defn current-state-updater [move-id]
-  (js/console.log (clj->js {:header :current-state-updater :move-id move-id}))
   (fn [&s]
     (swap! app-state (fn [{:keys [current-state current-move-id solution] :as app-state-val}]
                        (assoc app-state-val
@@ -25,15 +23,11 @@
                          :current-move-id move-id)))))
 
 (defn solve-rubiks-cube []
-  (js/console.log (clj->js {:header :solve-rubiks-cube :app-state @app-state}))
   (let [{:keys [shuffled-state]} @app-state
-        _ (js/console.log (clj->js shuffled-state))
         solution (cs/solve-rubiks-cube shuffled-state)]
-    (js/console.log (clj->js {:header "after solving call" :app-state @app-state}))
     (swap! app-state (fn [app-state-val] (assoc app-state-val :solution solution :current-move-id 0)))))
 
 (defn shuffle-rubiks-cube []
-  (js/console.log (clj->js {:header :shuffle-rubiks-cube :app-state @app-state}))
   (swap! app-state (fn [& _] (new-random-init-state))))
 
 (defn choices [rcs path]
@@ -77,7 +71,9 @@
    [show-solution app-state (into path [:solution])]
    [:button {:on-click shuffle-rubiks-cube} "shuffle"]
    [:button {:on-click solve-rubiks-cube} "solve"]])
-
+(defn dr
+  ([x] (js/console.log (clj->js x)) x)
+  ([txt x] (js/console.log txt) (dr x)))
 (defn render-teapot [canvas-id]
   (js/console.log "")
   (js/SceneJS.createScene
