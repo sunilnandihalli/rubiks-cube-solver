@@ -1,4 +1,5 @@
-(ns rubiks-cloact-webapp.solver)
+(ns rubiks-cloact-webapp.solver
+  (:require [clojure.set]))
 (def sides [[:green :blue] [:white :yellow] [:red :orange]])
 (defn cartesian-product [& [x & xs]]
   (if x (for [a x a-cp (cartesian-product xs)]
@@ -237,8 +238,11 @@
 
 
 (defn solve
-  ([rubiks-cube-state] (solve rubiks-cube-state :green))
+  ([rubiks-cube-state]
+     (println "single argument solve")
+     (solve rubiks-cube-state :green))
   ([rubiks-cube-state c]
+     (println "double argument solve")
      (let [oclrs (orientation-colors c)
            o-c (opposite c)
            dir-pairs (orientation-color-pairs c)
