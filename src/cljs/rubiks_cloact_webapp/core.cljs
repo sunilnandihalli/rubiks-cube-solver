@@ -13,6 +13,8 @@
      :last-move-applied -1
      :orientation (s/full-orientation {:front :green :right :red})}))
 
+(declare rubiks-cube show-solution)
+
 (def app-state (reagent/atom (new-random-init-state)))
 
 (defn current-state-updater [move-id]
@@ -39,6 +41,15 @@
 
 (defn shuffle-rubiks-cube []
   (swap! app-state (fn [& _] (new-random-init-state))))
+
+(defn main-page []
+  (let [{:keys [shuffled-state current-state orientation solution]} @app-state]
+    [:div
+     [rubiks-cube {:rubiks-cube-state shuffled-state :orientation  orientation :canvas-id "shuffled-state"}]
+     [rubiks-cube {:rubiks-cube-state current-state :orientation orientation :canvas-id "state-after-selected-move"}]
+     [show-solution {:solution solution}]
+     [:button {:on-click shuffle-rubiks-cube} "shuffle"]
+     [:button {:on-click solve-rubiks-cube} "solve"]]))
 
 (defn square-color [{:keys [color]}]
   [:span {:style {:margin "2px" :border "1px solid black" :width "30px" :height "30px" :display :inline-block :background-color color}}])
@@ -69,14 +80,7 @@
                        :style {:margin-right "5px" :font-size "12pt" :width "1em" :height "1em" :margin-left "5px" :margin-top "3px" :margin-bottom "3px"
                                :display :inline-block :border (str "10px solid " (name color)) :padding "2px"}} (if (= orientation :clockwise) "\u21BB" "\u21BA")]) solution)))
 
-(defn main-page []
-  (let [{:keys [shuffled-state current-state orientation solution]} @app-state]
-    [:div
-     [rubiks-cube {:rubiks-cube-state shuffled-state :orientation  orientation :canvas-id "shuffled-state"}]
-     [rubiks-cube {:rubiks-cube-state current-state :orientation orientation :canvas-id "state-after-selected-move"}]
-     [show-solution {:solution solution}]
-     [:button {:on-click shuffle-rubiks-cube} "shuffle"]
-     [:button {:on-click solve-rubiks-cube} "solve"]]))
+
 
 (defn dr
   ([x] (js/console.log (clj->js x)) x)
