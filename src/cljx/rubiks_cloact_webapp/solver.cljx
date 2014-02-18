@@ -1,21 +1,31 @@
 (ns rubiks-cloact-webapp.solver
   (:require [clojure.set]))
+
 (def sides [[:green :blue] [:white :yellow] [:red :orange]])
-(defn cartesian-product [& [x & xs]]
-  (if x (for [a x a-cp (cartesian-product xs)]
-          (vec (cons a a-cp))) [(list)]))
+
+(defn cartesian-product
+  ([x y] (for [xi x yi y] [xi yi]))
+  ([x y z] (for [xi x yi y zi z] [xi yi zi])))
+
 (defn combinations [[x & xs] n]
   (cond
    (= n 0) [[]]
    (nil? x) []
    :default (concat (map #(cons x %) (combinations xs (dec n)))
                     (combinations xs n))))
-(def unscrambled-state (into {}
-                             (map #(vector (set %) (into {} (map vector % %)))
-                                  (concat
-                                   (mapcat #(apply cartesian-product %) (combinations sides 2))
-                                   (apply cartesian-product sides)))))
 
+(comment
+  (combinations [1 2 3 4] 2)
+  (apply cartesian-product ))
+
+(defn unscrambled-state-fn []
+  (into {}
+        (map #(vector (set %) (into {} (map vector % %)))
+             (concat
+              (mapcat #(apply cartesian-product %) (combinations sides 2))
+              (apply cartesian-product sides)))))
+
+(def unscrambled-state (unscrambled-state-fn))
 (def human-comprehendible-sides [:front :right :left :up :down :back])
 
 (let [opp-color (into {} (concat sides (map (fn [[x y]] [y x]) sides)))]
@@ -239,10 +249,8 @@
 
 (defn solve
   ([rubiks-cube-state]
-     (println "single argument solve")
      (solve rubiks-cube-state :green))
   ([rubiks-cube-state c]
-     (println "double argument solve")
      (let [oclrs (orientation-colors c)
            o-c (opposite c)
            dir-pairs (orientation-color-pairs c)
@@ -252,6 +260,7 @@
                                                   (apply-algorithm r-c-s "Fi U Li Ui" {:front side :top c})))
            correct-first-layer-cross-tips (reduce re-orient-first-layer-cross-tips unoriented-correct-first-layer-cross oclrs)
            top-layer-correct (reduce #(solve-first-layer-corner %1 c %2) correct-first-layer-cross-tips dir-pairs)
+
            fix-middle-layer (fn [r-c-s piece]
                               (let [ort (r-c-s piece)]
                                 (if (ort o-c)
@@ -313,7 +322,9 @@
                                          (recur (apply-algorithm r-c-s "Ui" ormp) rest-of-rf-clrs)
                                          (recur (apply-algorithm r-c-s "Ri Di R D" ormp) whole-rf-clrs))))))
                          correct-top-layer-corner-rightly-placed)]
-       solved-cube)))
+
+       (println "cube solved!!!!!!!!!!")
+       (-> solved-cube meta :moves-applied))))
 
 (defn get-rubiks-cube [user-inp]
   (reduce (fn [loc-based-r-c-s [front three-by-three-array {:keys [top bottom right left]}]]
