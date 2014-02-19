@@ -14,9 +14,6 @@
    :default (concat (map #(cons x %) (combinations xs (dec n)))
                     (combinations xs n))))
 
-(comment
-  (combinations [1 2 3 4] 2)
-  (apply cartesian-product ))
 
 (defn unscrambled-state-fn []
   (into {}

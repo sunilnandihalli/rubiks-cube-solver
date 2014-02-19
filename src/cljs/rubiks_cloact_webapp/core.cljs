@@ -1,12 +1,12 @@
 (ns rubiks-cloact-webapp.core
   (:require
    [rubiks-cloact-webapp.solver :as s]
+   [rubiks-cloact-webapp.cube :as c]
    [reagent.core :as reagent :refer [atom]]))
 
 ;; Lets you do (prn "stuff") to the console
 (enable-console-print!)
-
-
+(c/rubiks-cube-nxnxn 2)
 (defn new-random-init-state []
   (let [x (s/scrambled-rubiks-cube)]
     {:shuffled-state x :current-state x :solution []
