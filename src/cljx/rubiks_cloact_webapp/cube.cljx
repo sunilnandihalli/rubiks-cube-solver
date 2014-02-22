@@ -16,11 +16,10 @@
 
 
 (defn cube-geometry [size]
-  (let [half-size (/ size 2)
-        dirs [:x :y :z]
+  (let [dirs [:x :y :z]
         dir-pairs [[[:x :y] :z] [[:y :z] :x] [[:z :x] :y]]
         coord-map-to-coord-vec (fn [{:keys [x y z] :or {x 0 y 0 z 0}}] [x y z])
-        cvals [(- half-size) half-size]
+        cvals [0 size]
         dir-faces (fn [[[d1 d2] d3]]
                     (let [[v00 v01 v10 v11] (for [c-v1 cvals c-v2 cvals] {d1 c-v1 d2 c-v2})
                           f-coords [v00 v10 v11 v01]
@@ -31,16 +30,18 @@
     faces))
 
 (defn cube-piece [{:keys [x y z] :as p} n]
-  (let [cgeom (cube-geometry (/ 1 n))]
+  (let [n-1 (- n 1)
+        cgeom (cube-geometry (/ 1 n))]
     {:type :translate :x x :y y :z z
      :nodes (mapcat
              (fn [[dir [dir-coord dir-color]]]
                (let [{:keys [positive-face negative-face]} (cgeom dir)]
                 (cond
-                 (= dir-coord n) [{:face positive-face :color dir-color} {:face negative-face}]
-                 (= dir-coord (- n)) [{:face positive-face} {:face negative-face :color dir-color}]
+                 (= dir-coord n-1) [{:face positive-face :color dir-color} {:face negative-face}]
+                 (= dir-coord 0) [{:face positive-face} {:face negative-face :color dir-color}]
                  :default [{:face positive-face} {:face negative-face}])))
              p)}))
+
 (def dirs [:x :y :z])
 (def sides [[:green :blue] [:white :yellow] [:red :orange]])
 
