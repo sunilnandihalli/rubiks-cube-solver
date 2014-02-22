@@ -21,6 +21,7 @@
   :plugins [[lein-cljsbuild "1.0.1"]
             [lein-ring "0.8.7"]
             [lein-pdo "0.1.1"]
+            [lein-gorilla "0.1.2"]
             [com.keminglabs/cljx "0.3.2"]]
 
   :cljx {:builds [{:source-paths ["src/cljx"]

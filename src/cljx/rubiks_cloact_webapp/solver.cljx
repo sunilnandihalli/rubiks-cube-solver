@@ -14,7 +14,6 @@
    :default (concat (map #(cons x %) (combinations xs (dec n)))
                     (combinations xs n))))
 
-
 (defn unscrambled-state-fn []
   (into {}
         (map #(vector (set %) (into {} (map vector % %)))
