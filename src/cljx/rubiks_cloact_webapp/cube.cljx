@@ -13,8 +13,6 @@
    (nil? x) []
    :default (concat (map #(cons x %) (combinations xs (dec n)))
                     (combinations xs n))))
-
-
 (defn cube-geometry [size]
   (let [dirs [:x :y :z]
         dir-pairs [[[:x :y] :z] [[:y :z] :x] [[:z :x] :y]]
@@ -49,8 +47,8 @@
   (let [pairs-to-map #(into {} %)
         boundary-sides (map (fn [dir [neg-color pos-color]] [[dir [0 neg-color]] [dir [(dec n) pos-color]]]) dirs sides)
         corner-pieces (apply cartesian-product boundary-sides)
-        edge-pieces (mapcat #(apply cartesian-product %) (combinations boundary-sides 2))
-        face-pieces (map vector (apply concat boundary-sides))
+        edge-pieces (if (> n 2) (mapcat #(apply cartesian-product %) (combinations boundary-sides 2)))
+        face-pieces (if (> n 2) (map vector (apply concat boundary-sides)))
         dirs-set (set dirs)
         general-pieces (concat corner-pieces edge-pieces face-pieces)]
     {:n n
