@@ -6,7 +6,7 @@
 
 ;; Lets you do (prn "stuff") to the console
 (enable-console-print!)
-(c/rubiks-cube-nxnxn 2)
+(c/rubiks-cube-nxnxn 3)
 (defn new-random-init-state []
   (let [x (s/scrambled-rubiks-cube)]
     {:shuffled-state x :current-state x :solution []
@@ -56,7 +56,7 @@
 (def layout [[nil :top nil nil] [:left :front :right :back] [nil :bottom nil nil]])
 
 (defn rubiks-cube [{:keys [rubiks-cube-state orientation canvas-id]}]
-  (let [frcs (s/to-faces rubiks-cube-state orientation)]
+  (let [{frcs :faces} (s/to-faces rubiks-cube-state orientation)]
     [:div
      (into [:table {:style {:display :inline-block}}]
            (map (fn [table-row]

@@ -109,9 +109,55 @@
            ormp (full-orientation ormp)
            empty-face (vec (repeat 3 (vec (repeat 3 nil))))
            faces (into {} (map (fn [[side color]] [side (coords inverted-rubiks-cube-state color (into {} (map (fn [[x y]] [x (ormp y)]) (rep-maps side))) empty-face  [-1 -1])]) ormp))]
-       faces))
+       {:n 3 :faces faces}))
   ([rubiks-cube-state] (to-faces rubiks-cube-state {})))
+(let [dir-ort-map {:x [:left :right] :y [:bottom :top] :z [:back :front]}]
+ (defn from-generic-state [{:keys [pieces n]}]
+   {:pre [(= n 3)]}
+   (let [ormp (into {} (keep (fn [{[x xc] :x [y yc] :y [z zc] :z :as piece}]
+                               (case [x y z] ; ideal candidate for core.match?
+                                 [0 1 1] [:left xc]
+                                 [2 1 1] [:right xc]
+                                 [1 0 1] [:bottom yc]
+                                 [1 2 1] [:top yc]
+                                 [1 1 0] [:back zc]
+                                 [1 1 2] [:front zc]
+                                 nil)) pieces))]
+     {:orientation ormp
+      :rubiks-cube-state (into {}
+                               (map (fn [general-piece]
+                                         (let [c (keep (fn [[dir [coord color]]]
+                                                         (if color
+                                                           (let [[min max] (dir-ort-map dir)]
+                                                             [(ormp (case coord 0 min 2 max)) color])))
+                                                       general-piece)
+                                               piece (set (map second c))]
+                                           [piece (into {} c)]))
+                                    pieces))}))
 
+ (defn to-generic-state
+   ([rcs ormp]
+      (let [default-generic-piece {:x [1] :y [1] :z [1]}
+            dir-to-generic-coord {:left [:x [0]] :right [:x [2]] :bottom [:y [0]] :top [:y [2]] :back [:z [0]] :front [:z [2]]}
+            color-to-generic-coord (into {} (map (fn [[k v]] [(ormp k) v]) dir-to-generic-coord))
+            center-face-pieces (map (fn [[color [dir [coord]]]]
+                                      (assoc default-generic-piece dir [coord color]))
+                                    color-to-generic-coord)]
+        {:n 3
+         :pieces (map (fn [[piece dir-color-map]]
+                        (reduce (fn [cur-generic-piece [dir-color actual-color]]
+                                  (let [[dir [coord]] (color-to-generic-coord dir-color)]
+                                    (assoc cur-generic-piece dir [coord actual-color])))
+                                default-generic-piece dir-color-map ))
+                      rcs)}))
+   ([rcs] (to-generic-state rcs (full-orientation {})))))
+
+#_ (let [grcs (rubiks-cloact-webapp.cube/rubiks-cube-nxnxn 3)
+         {:keys [rubiks-cube-state orientation]} (from-generic-state grcs)
+         gbrcs (to-generic-state rubiks-cube-state orientation)]
+     (def *grcs* grcs)
+     (def *gbrcs* gbrcs)
+     (def *rcs* rubiks-cube-state))
 (defn display
   ([rubiks-cube-state loc ormp]
      (do (println (str " display " loc))

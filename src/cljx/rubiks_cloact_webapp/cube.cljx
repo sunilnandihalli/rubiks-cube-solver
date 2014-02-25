@@ -27,6 +27,9 @@
         faces (into {} (map dir-faces dir-pairs))]
     faces))
 
+;; [step [:x|:y|:z 0|...|n-1 :clockwise|:counter-clockwise]]
+(def ^:dynamic *rotation-op* nil)
+
 (defn cube-piece [{:keys [x y z] :as p} n]
   (let [n-1 (- n 1)
         cgeom (cube-geometry (/ 1 n))]
@@ -39,6 +42,9 @@
                  (= dir-coord 0) [{:face positive-face} {:face negative-face :color dir-color}]
                  :default [{:face positive-face} {:face negative-face}])))
              p)}))
+
+(defn rubiks-cube-scene-graph [{:keys [pieces n] :as rcs}]
+  (map #(cube-piece % n) pieces))
 
 (def dirs [:x :y :z])
 (def sides [[:green :blue] [:white :yellow] [:red :orange]])
@@ -89,39 +95,37 @@
                           cur-pieces)))]
       {:n n :pieces (reduce rotate pieces ops)})))
 
-(defn shuffle [{:keys [pieces n] :as rcs} & {:keys [num-shuffles] :or {num-shuffles 100}}]
+(defn shuffle-rubiks-cube [{:keys [pieces n] :as rcs} & {:keys [num-shuffles] :or {num-shuffles 100}}]
   (apply-algorithm rcs (repeatedly num-shuffles #(vector (rand-nth [:x :y :z]) (rand-int n) (rand-nth [:clockwise :counter-clockwise])))))
 
-(let [faces [:front :back :right :left :top :bottom]
-      face-representation (fn face-representation [{:keys [n pieces] :as rcs}]
-                            (let [n-1 (- n 1)
-                                  {:keys [front back right left top bottom]} {:front (fn [x y z] [:front (- n-1 y) x])
-                                                                              :back (fn [x y z] [:back (- n-1 y) (- n-1 x)])
-                                                                              :right (fn [x y z] [:right (- n-1 y) (- n-1 z)])
-                                                                              :left (fn [x y z] [:left (- n-1 y) z])
-                                                                              :top (fn [x y z] [:top z x])
-                                                                              :bottom (fn [x y z] [:bottom (- n-1 z) x])}
-                                  nxn-array (vec (repeat n (vec (repeat n :none))))
-                                  initial-display-state (into {} (map vector faces (repeat nxn-array)))
-                                  fchoice (fn [v min-fn max-fn]
-                                            (cond
-                                             (= v 0) min-fn
-                                             (= v n-1) max-fn))
-                                  update-display-state (fn update-display-state [cds piece]
-                                                         (def p piece)
-                                                         (def c cds)
-                                                         (let [{[x x-color] :x [y y-color] :y [z z-color] :z} piece]
-                                                           (as-> cds ncds
-                                                                 (if-not x-color ncds
-                                                                         (assoc-in ncds ((fchoice x left right) x y z) x-color))
-                                                                 (if-not y-color ncds
-                                                                         (assoc-in ncds ((fchoice y bottom top) x y z) y-color))
-                                                                 (if-not z-color ncds
-                                                                         (assoc-in ncds ((fchoice z back front) x y z) z-color)))))]
-                              (reduce update-display-state initial-display-state pieces)))]
+(let [faces [:front :back :right :left :top :bottom]]
+  (defn face-representation [{:keys [n pieces] :as rcs :or {n 3}}]
+    (let [n-1 (- n 1)
+          {:keys [front back right left top bottom]} {:front (fn [x y z] [:front (- n-1 y) x])
+                                                      :back (fn [x y z] [:back (- n-1 y) (- n-1 x)])
+                                                      :right (fn [x y z] [:right (- n-1 y) (- n-1 z)])
+                                                      :left (fn [x y z] [:left (- n-1 y) z])
+                                                      :top (fn [x y z] [:top z x])
+                                                      :bottom (fn [x y z] [:bottom (- n-1 z) x])}
+          nxn-array (vec (repeat n (vec (repeat n :none))))
+          initial-face-representation (into {} (map vector faces (repeat nxn-array)))
+          fchoice (fn [v min-fn max-fn]
+                    (cond
+                     (= v 0) min-fn
+                     (= v n-1) max-fn))
+          update-face-representation (fn update-face-representation [cds piece]
+                                 (let [{[x x-color] :x [y y-color] :y [z z-color] :z} piece]
+                                   (as-> cds ncds
+                                         (if-not x-color ncds
+                                                 (assoc-in ncds ((fchoice x left right) x y z) x-color))
+                                         (if-not y-color ncds
+                                                 (assoc-in ncds ((fchoice y bottom top) x y z) y-color))
+                                         (if-not z-color ncds
+                                                 (assoc-in ncds ((fchoice z back front) x y z) z-color)))))]
+      {:n n :faces (reduce update-face-representation initial-face-representation pieces)}))
 
-  (defn display [{:keys [n pieces] :as rcs}]
-    (let [{:keys [front back right left top bottom] :as frcs} (face-representation rcs)
+  (defn display [{:keys [n pieces] :or {n 3}:as rcs}]
+    (let [{{:keys [front back right left top bottom] :as frcs} :faces} (face-representation rcs)
           empty (vec (repeat n (vec (repeat n \space))))
           sub-color-keys-with-chars (fn [face] (mapv #(mapv (fn [x] (-> x name first)) %) face))
           [front back right left top bottom] (mapv sub-color-keys-with-chars [front back right left top bottom])
@@ -131,4 +135,3 @@
           merged (mapcat #(apply (partial map concat) %) layout)
           str-rep (apply str (interpose \newline (map #(apply str (interpose \space %)) merged)))]
       (println str-rep))))
-#_ (rubiks-cube-nxnxn 2)
