@@ -6,12 +6,11 @@
 
 ;; Lets you do (prn "stuff") to the console
 (enable-console-print!)
-(c/rubiks-cube-nxnxn 3)
+
 (defn new-random-init-state []
-  (let [x (s/scrambled-rubiks-cube)]
+  (let [x (c/shuffle-rubiks-cube (c/rubiks-cube-nxnxn 3))]
     {:shuffled-state x :current-state x :solution []
-     :last-move-applied -1
-     :orientation (s/full-orientation {:front :green :right :red})}))
+     :last-move-applied -1}))
 
 (declare rubiks-cube show-solution)
 
@@ -26,7 +25,7 @@
                                                          (> last-move-applied move-id) (mapv (fn [[mid [c o]]] [mid [c (s/opposite-orientation o)]])
                                                                                              (reverse (subvec solution (inc move-id) (inc last-move-applied))))
                                                          :default [])
-                                                  new-current-state (s/apply-algorithm current-state (map second moves))]
+                                                  new-current-state (c/apply-algorithm current-state (map second moves))]
                                               new-current-state)
                              :last-move-applied move-id))))))
 

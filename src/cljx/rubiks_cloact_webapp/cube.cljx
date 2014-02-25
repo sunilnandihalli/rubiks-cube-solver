@@ -13,6 +13,7 @@
    (nil? x) []
    :default (concat (map #(cons x %) (combinations xs (dec n)))
                     (combinations xs n))))
+
 (defn cube-geometry [size]
   (let [dirs [:x :y :z]
         dir-pairs [[[:x :y] :z] [[:y :z] :x] [[:z :x] :y]]

@@ -3,25 +3,7 @@
 
 (def sides [[:green :blue] [:white :yellow] [:red :orange]])
 
-(defn cartesian-product
-  ([x y] (for [xi x yi y] [xi yi]))
-  ([x y z] (for [xi x yi y zi z] [xi yi zi])))
 
-(defn combinations [[x & xs] n]
-  (cond
-   (= n 0) [[]]
-   (nil? x) []
-   :default (concat (map #(cons x %) (combinations xs (dec n)))
-                    (combinations xs n))))
-
-(defn unscrambled-state-fn []
-  (into {}
-        (map #(vector (set %) (into {} (map vector % %)))
-             (concat
-              (mapcat #(apply cartesian-product %) (combinations sides 2))
-              (apply cartesian-product sides)))))
-
-(def unscrambled-state (unscrambled-state-fn))
 (def human-comprehendible-sides [:front :right :left :up :down :back])
 
 (let [opp-color (into {} (concat sides (map (fn [[x y]] [y x]) sides)))]
@@ -59,32 +41,6 @@
                                rubiks-cube-state))
         (update-in (if original-cube m {:original-cube rubiks-cube-state :moves-applied []}) [:moves-applied] conj move)))))
 
-(def rep-maps {:top {:up-side :back :down-side :front :left-side :left :right-side :right}
-               :front {:up-side :top :down-side :bottom :left-side :left :right-side :right}
-               :right {:up-side :top :down-side :bottom :left-side :front :right-side :back}
-               :left {:up-side :top :down-side :bottom :left-side :back :right-side :front}
-               :back {:up-side :top :down-side :bottom :left-side :right :right-side :left}
-               :bottom {:up-side :front :down-side :back :left-side :left :right-side :right}})
-
-(defn get-face-locs [cur-side {:keys [up-side down-side right-side left-side]}]
-  (mapv (fn [row] (mapv #(set (cons cur-side %)) row))
-        [[[up-side left-side] [up-side] [up-side right-side]]
-         [[left-side] [] [right-side]]
-         [[left-side down-side] [down-side] [down-side right-side]]]))
-
-
-
-(def top-left-coords {:top [0 1] :front [1 1] :left [1 0] :right [1 2] :back [1 3] :bottom [2 1]})
-
-(defn coords [rubiks-cube-state display-side {:keys [up-side down-side right-side left-side] :as side-orientation} canvas [top left :as top-left-coords]]
-   (let [cur-side-canvas-coords (for [[r-id r] (map-indexed vector [[[up-side left-side] [up-side] [up-side right-side]]
-                                                                    [[left-side] [] [right-side]]
-                                                                    [[left-side down-side] [down-side] [down-side right-side]]])
-                                      [c-id c] (map-indexed vector r)]
-                                 [(+ top r-id 1) (+ left c-id 1) (set (cons display-side c))])]
-    (reduce (fn [cur-canvas [x y k]]
-              (assoc-in cur-canvas [x y] (get-in rubiks-cube-state [k display-side] display-side))) canvas cur-side-canvas-coords)))
-
 (defn full-orientation [ormp]
   (loop [{:keys [top front bottom right left back] :as fr} ormp]
     (if (and top front bottom right left back) fr
@@ -103,14 +59,7 @@
                        (and right (every? nil? [top front])) [:top (first (orientation-colors right))]
                        (and top (every? nil? [right front])) [:right (first (orientation-colors top))]
                        (nil? front) [:front :green]))))))
-(defn to-faces
-  ([rubiks-cube-state ormp]
-     (let [inverted-rubiks-cube-state (into {} (map (fn [[_ dir-to-color]] [(set (keys dir-to-color)) dir-to-color]) rubiks-cube-state))
-           ormp (full-orientation ormp)
-           empty-face (vec (repeat 3 (vec (repeat 3 nil))))
-           faces (into {} (map (fn [[side color]] [side (coords inverted-rubiks-cube-state color (into {} (map (fn [[x y]] [x (ormp y)]) (rep-maps side))) empty-face  [-1 -1])]) ormp))]
-       {:n 3 :faces faces}))
-  ([rubiks-cube-state] (to-faces rubiks-cube-state {})))
+
 (let [dir-ort-map {:x [:left :right] :y [:bottom :top] :z [:back :front]}]
  (defn from-generic-state [{:keys [pieces n]}]
    {:pre [(= n 3)]}
@@ -152,40 +101,6 @@
                       rcs)}))
    ([rcs] (to-generic-state rcs (full-orientation {})))))
 
-#_ (let [grcs (rubiks-cloact-webapp.cube/rubiks-cube-nxnxn 3)
-         {:keys [rubiks-cube-state orientation]} (from-generic-state grcs)
-         gbrcs (to-generic-state rubiks-cube-state orientation)]
-     (def *grcs* grcs)
-     (def *gbrcs* gbrcs)
-     (def *rcs* rubiks-cube-state))
-(defn display
-  ([rubiks-cube-state loc ormp]
-     (do (println (str " display " loc))
-         (display rubiks-cube-state ormp)))
-  ([rubiks-cube-state]
-     (display rubiks-cube-state (full-orientation {:front :green})))
-  ([rubiks-cube-state ormp]
-     (let [inverted-rubiks-cube-state (into {} (map (fn [[_ dir-to-color]] [(set (keys dir-to-color)) dir-to-color]) rubiks-cube-state))
-           color-map {:red \R :green \G :yellow \Y :blue \B :white \W :orange \O nil \ }
-           side-width 5
-           row-max (* 3 side-width)
-           col-max (* 4 side-width)
-           helper (fn []
-               (let [cur-cube-orientation (full-orientation ormp)
-                     canvas (reduce (fn [canvas [orientation color]]
-                                      (coords inverted-rubiks-cube-state color (into {} (map (fn [[x y]] [x (cur-cube-orientation y)])
-                                                                                             (rep-maps orientation)))
-                                              canvas (let [[x y] (top-left-coords orientation)]
-                                                       [(* side-width x) (* side-width y)])))
-                                    {} cur-cube-orientation)]
-                 (doseq [r (range row-max)]
-                   (println (apply str (for [c (range col-max)]
-                                         (color-map (get-in canvas [r c]))))))
-                 (println)))]
-       (println (apply str (repeat 100 \-)))
-       (helper)
-       (println (apply str (repeat 100 \+)))
-       rubiks-cube-state)))
 
 (let [char-orientation-map {\U :top \R :right \L :left \F :front \D :bottom \B :back}]
   (defn ops-to-string [ops ormp]
@@ -203,11 +118,6 @@
     ([rubiks-cube-state ops]
        (reduce (fn [s [c o]] (rotate-rubiks-cube s c o)) rubiks-cube-state ops))))
 
-(let [moves (vec (for [x (apply concat sides) y [:clockwise :counter-clockwise]] [x y]))]
- (defn scrambled-rubiks-cube [& {:keys [num-scrambles] :or {num-scrambles 200}}]
-   (let [scrambling-moves (repeatedly num-scrambles #(rand-nth moves))]
-     (with-meta (reduce (fn [s [color orientation]] (rotate-rubiks-cube s color orientation))
-                       unscrambled-state scrambling-moves) nil))))
 
 (defn transform-rubiks-cube [rubiks-cube-state {:keys [piece f-pos i-pos rot-dir]}]
   (if (= i-pos f-pos) rubiks-cube-state
@@ -368,40 +278,9 @@
        (println "cube solved!!!!!!!!!!")
        (-> solved-cube meta :moves-applied))))
 
-(defn get-rubiks-cube [user-inp]
-  (reduce (fn [loc-based-r-c-s [front three-by-three-array {:keys [top bottom right left]}]]
-            (let [{:keys [front top bottom right left back]} (full-orientation {:front front :top top})
-                  all-face-locs [[[top left] [top] [top right]]
-                                 [[left] [] [right]]
-                                 [[left bottom] [bottom] [bottom right]]]]
-              (reduce (fn [l-b-r-c-s i-j]
-                        (let [loc (set (cons front (get-in all-face-locs i-j)))]
-                          (update-in l-b-r-c-s [loc] assoc front (get-in three-by-three-array i-j))))
-                      loc-based-r-c-s (for [i (range 3) j (range 3)] [i j])))) {} user-inp))
-
-(defn from-faces [frcs]
-  (let [ormp (into {} (map (fn [[k v]] [k (get-in v [1 1])]) frcs))
-        face-locs (fn [side]
-                    (let [cur-side (ormp side)
-                          face-colors (frcs side)
-                          neighbours (into {} (map (fn [[k v]] [k (ormp v)]) (rep-maps side)))]
-                      (into {}
-                            (for [[row-locs row-colors] (map vector (get-face-locs cur-side neighbours) face-colors)
-                                  [loc color] (map vector row-locs row-colors)]
-                              [loc {cur-side color}]))))]
-    (into {}
-          (map (fn [[_ loc-col-map]]
-                 [(set (vals loc-col-map)) loc-col-map])
-               (apply merge-with #(merge-with (fn [& x] nil) %1 %2)
-                      (map face-locs (keys frcs)))))))
-
 (defn rev-algo [s]
   (apply str (interpose " " (map (fn [[a b]] (if b (str a) (str a \i))) (rseq (clojure.string/split s #"\s+"))))))
 
-
-
-(defn orientation-from-face-rep [frcs]
-  (into {} (map (fn [[k v]] [k (get-in v [1 1])]) frcs)))
 
 (defn solve-rubiks-cube [rcs]
   (->> rcs solve meta :moves-applied (map-indexed #(vector %1 %2))))
