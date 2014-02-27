@@ -18,8 +18,6 @@
   (defn current-state-updater [move-id]
     (fn [& s]
       (let [{:keys [current-state last-move-applied solution] :as app-state-val} @app-state]
-        (println {:num-solution-ops (count solution) :last-move-applied  last-move-applied})
-        (c/display current-state)
         (swap! app-state (fn [app-state-val]
                            (assoc app-state-val
                              :current-state (let [moves (cond
@@ -27,9 +25,7 @@
                                                          (> last-move-applied move-id) (mapv (fn [[mid [dir crd o]]] [mid [dir crd (s/opposite-orientation o)]])
                                                                                              (reverse (subvec solution (inc move-id) (inc last-move-applied))))
                                                          :default [])
-                                                  _ (println moves)
                                                   new-current-state (c/apply-algorithm current-state (map second moves))]
-                                              (c/display new-current-state)
                                               new-current-state)
                              :last-move-applied move-id))))))
 
@@ -99,7 +95,5 @@
   (js/SceneJS.setDebugConfigs (clj->js {:shading {:whitewash true :logScripts true}
                                         :webgl {:logTrace true}
                                         :pluginPath "js/scenejs/plugins"}))
-  (println :got-here)
   (reagent/render-component [main-page] (.-body js/document))
-  (println :after-main-page)
   (mapv render-teapot ["shuffled-state"  "state-after-selected-move"]))
