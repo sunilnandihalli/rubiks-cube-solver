@@ -18,20 +18,22 @@
   (defn current-state-updater [move-id]
     (fn [& s]
       (let [{:keys [current-state last-move-applied solution] :as app-state-val} @app-state]
+        (println solution last-move-applied current-state)
         (swap! app-state (fn [app-state-val]
                            (assoc app-state-val
                              :current-state (let [moves (cond
                                                          (< last-move-applied move-id) (subvec solution (inc last-move-applied) (inc move-id))
-                                                         (> last-move-applied move-id) (mapv (fn [[mid [c o]]] [mid [c (s/opposite-orientation o)]])
+                                                         (> last-move-applied move-id) (mapv (fn [[mid [dir [crd o]]]] [mid [dir [crd (s/opposite-orientation o)]]])
                                                                                              (reverse (subvec solution (inc move-id) (inc last-move-applied))))
                                                          :default [])
+                                                  _ (println moves)
                                                   new-current-state (c/apply-algorithm current-state (map second moves))]
                                               new-current-state)
                              :last-move-applied move-id))))))
 
   (defn solve-rubiks-cube []
     (let [{:keys [shuffled-state]} @app-state
-          solution (vec (map-indexed vector (s/solve shuffled-state)))]
+          solution (s/solve-rubiks-cube shuffled-state)]
       (swap! app-state (fn [app-state-val] (assoc app-state-val :solution solution :last-move-applied -1)))))
 
   (defn shuffle-rubiks-cube []
@@ -55,7 +57,7 @@
 (def layout [[nil :top nil nil] [:left :front :right :back] [nil :bottom nil nil]])
 
 (defn rubiks-cube [{:keys [rubiks-cube-state orientation canvas-id]}]
-  (let [{frcs :faces} (s/to-faces rubiks-cube-state orientation)]
+  (let [{frcs :faces} (c/face-representation rubiks-cube-state)]
     [:div
      (into [:table {:style {:display :inline-block}}]
            (map (fn [table-row]
@@ -64,15 +66,17 @@
                               table-row))) layout))
      [:canvas {:id canvas-id :width 600 :height 400}]]))
 
-(defn show-solution [{:keys [solution]}]
-  (into [:div {:style {:background-color "#ccc" :padding "10px"}}
-         [:h3  "click to see the state of the cube after applying all the transformations up-to and including clicked transformation" [:br]]]
-        (map (fn [[move-id [color orientation]]]
-               [:span {:key move-id
-                       :title (str move-id " " (name color) " " (name orientation))
-                       :on-click (current-state-updater move-id)
-                       :style {:margin-right "5px" :font-size "12pt" :width "1em" :height "1em" :margin-left "5px" :margin-top "3px" :margin-bottom "3px"
-                               :display :inline-block :border (str "10px solid " (name color)) :padding "2px"}} (if (= orientation :clockwise) "\u21BB" "\u21BA")]) solution)))
+(defn show-solution [{:keys [solution orientation]}]
+  (let [color :blue]
+    (into [:div {:style {:background-color "#ccc" :padding "10px"}}
+           [:h3  "click to see the state of the cube after applying all the transformations up-to and including clicked transformation" [:br]]]
+          (map (fn [[move-id [dir [coord orientation]]]]
+                 [:span {:key move-id
+                         :title (str move-id " " (name color) " " (name orientation))
+                         :on-click (current-state-updater move-id)
+                         :style {:margin-right "5px" :font-size "16pt" :width "3em" :height "1em" :margin-left "5px" :margin-top "3px" :margin-bottom "3px"
+                                 :display :inline-block :border (str "10px solid " (name color)) :padding "2px"}} (str (name dir) " " coord " "
+                                                                                                                   (if (= orientation :clockwise) "\u21BB" "\u21BA"))]) solution))))
 
 (defn dr
   ([x] (js/console.log (clj->js x)) x)
@@ -93,5 +97,7 @@
   (js/SceneJS.setDebugConfigs (clj->js {:shading {:whitewash true :logScripts true}
                                         :webgl {:logTrace true}
                                         :pluginPath "js/scenejs/plugins"}))
+  (println :got-here)
   (reagent/render-component [main-page] (.-body js/document))
+  (println :after-main-page)
   (mapv render-teapot ["shuffled-state"  "state-after-selected-move"]))

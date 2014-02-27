@@ -274,13 +274,23 @@
                                          (recur (apply-algorithm r-c-s "Ui" ormp) rest-of-rf-clrs)
                                          (recur (apply-algorithm r-c-s "Ri Di R D" ormp) whole-rf-clrs))))))
                          correct-top-layer-corner-rightly-placed)]
-
-       (println "cube solved!!!!!!!!!!")
-       (-> solved-cube meta :moves-applied))))
+       solved-cube)))
 
 (defn rev-algo [s]
   (apply str (interpose " " (map (fn [[a b]] (if b (str a) (str a \i))) (rseq (clojure.string/split s #"\s+"))))))
 
-
-(defn solve-rubiks-cube [rcs]
-  (->> rcs solve meta :moves-applied (map-indexed #(vector %1 %2))))
+(defn solve-rubiks-cube [grcs]
+  (let [{:keys [pieces n]} grcs
+        {rcs :rubiks-cube-state ormp :orientation} (from-generic-state grcs)
+        color-ort-to-dir-coord-ort (let [rev-ormp (clojure.set/map-invert ormp)]
+                                     (fn [[clr ort]]
+                                       (case (rev-ormp clr)
+                                         :left   [:x [0 (opposite-orientation ort)]]
+                                         :right  [:x [2 ort]]
+                                         :bottom [:y [0 (opposite-orientation ort)]]
+                                         :top    [:y [2 ort]]
+                                         :back   [:z [0 (opposite-orientation ort)]]
+                                         :front  [:z [2 ort]])))
+        solution (->> rcs solve meta :moves-applied (map-indexed (fn [move-id clr-ort]
+                                                                   [move-id (color-ort-to-dir-coord-ort clr-ort)])))]
+    solution))
