@@ -24,7 +24,7 @@
                            (assoc app-state-val
                              :current-state (let [moves (cond
                                                          (< last-move-applied move-id) (subvec solution (inc last-move-applied) (inc move-id))
-                                                         (> last-move-applied move-id) (mapv (fn [[mid [dir [crd o]]]] [mid [dir [crd (s/opposite-orientation o)]]])
+                                                         (> last-move-applied move-id) (mapv (fn [[mid [dir crd o]]] [mid [dir crd (s/opposite-orientation o)]])
                                                                                              (reverse (subvec solution (inc move-id) (inc last-move-applied))))
                                                          :default [])
                                                   _ (println moves)
@@ -74,7 +74,7 @@
            [:h3  "click to see the state of the cube after applying all the transformations up-to and including clicked transformation" [:br]]]
           (map (fn [[move-id [dir coord orientation]]]
                  [:span {:key move-id
-                         :title (str move-id " " (name color) " " (name orientation))
+                         :title (str move-id " [ " (name dir) " " coord " " (name orientation) " ]")
                          :on-click (current-state-updater move-id)
                          :style {:margin-right "5px" :font-size "16pt" :width "3em" :height "1em" :margin-left "5px" :margin-top "3px" :margin-bottom "3px"
                                  :display :inline-block :border (str "10px solid " (name color)) :padding "2px"}} (str (name dir) " " coord " "
