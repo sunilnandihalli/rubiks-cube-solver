@@ -285,12 +285,12 @@
         color-ort-to-dir-coord-ort (let [rev-ormp (clojure.set/map-invert ormp)]
                                      (fn [[clr ort]]
                                        (case (rev-ormp clr)
-                                         :left   [:x [0 (opposite-orientation ort)]]
-                                         :right  [:x [2 ort]]
-                                         :bottom [:y [0 (opposite-orientation ort)]]
-                                         :top    [:y [2 ort]]
-                                         :back   [:z [0 (opposite-orientation ort)]]
-                                         :front  [:z [2 ort]])))
+                                         :left   [:x 0 (opposite-orientation ort)]
+                                         :right  [:x 2 ort]
+                                         :bottom [:y 0 (opposite-orientation ort)]
+                                         :top    [:y 2 ort]
+                                         :back   [:z 0 (opposite-orientation ort)]
+                                         :front  [:z 2 ort])))
         solution (->> rcs solve meta :moves-applied (map-indexed (fn [move-id clr-ort]
-                                                                   [move-id (color-ort-to-dir-coord-ort clr-ort)])))]
+                                                                   [move-id (color-ort-to-dir-coord-ort clr-ort)])) vec)]
     solution))

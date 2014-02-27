@@ -18,7 +18,8 @@
   (defn current-state-updater [move-id]
     (fn [& s]
       (let [{:keys [current-state last-move-applied solution] :as app-state-val} @app-state]
-        (println solution last-move-applied current-state)
+        (println {:num-solution-ops (count solution) :last-move-applied  last-move-applied})
+        (c/display current-state)
         (swap! app-state (fn [app-state-val]
                            (assoc app-state-val
                              :current-state (let [moves (cond
@@ -28,6 +29,7 @@
                                                          :default [])
                                                   _ (println moves)
                                                   new-current-state (c/apply-algorithm current-state (map second moves))]
+                                              (c/display new-current-state)
                                               new-current-state)
                              :last-move-applied move-id))))))
 
@@ -70,7 +72,7 @@
   (let [color :blue]
     (into [:div {:style {:background-color "#ccc" :padding "10px"}}
            [:h3  "click to see the state of the cube after applying all the transformations up-to and including clicked transformation" [:br]]]
-          (map (fn [[move-id [dir [coord orientation]]]]
+          (map (fn [[move-id [dir coord orientation]]]
                  [:span {:key move-id
                          :title (str move-id " " (name color) " " (name orientation))
                          :on-click (current-state-updater move-id)

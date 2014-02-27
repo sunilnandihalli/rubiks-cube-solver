@@ -18,7 +18,7 @@
                  [cljs-http "0.1.3"]
                  [reagent "0.4.1"]]
 
-  :plugins [[lein-cljsbuild "1.0.1"]
+  :plugins [[lein-cljsbuild "1.0.2"]
             [lein-ring "0.8.7"]
             [lein-pdo "0.1.1"]
             [lein-gorilla "0.1.2"]

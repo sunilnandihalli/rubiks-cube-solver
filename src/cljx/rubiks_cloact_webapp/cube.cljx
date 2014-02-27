@@ -83,6 +83,7 @@
                         (let [[n-rp-dir n-rp-coord-fn] (trf rp-dir)]
                           [n-rp-dir (n-rp-coord-fn rp-coord)]))))]
   (defn apply-algorithm [{:keys [pieces n] :as rcs} ops]
+
     (let [rotate (fn rotate [cur-pieces op]
                    (let [[dir coord ort] op
                          trf (transformer dir ort n)]
