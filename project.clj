@@ -5,17 +5,16 @@
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/tools.reader "0.8.3"]
                  [org.clojure/math.combinatorics "0.0.7"]
-                 [org.clojure/core.logic "0.8.5"]
-                 [jarohen/chord "0.2.2"]
+                 [org.clojure/core.logic "0.8.7"]
                  ;; CLJ
-                 [ring/ring-core "1.2.0"]
+                 [ring/ring-core "1.2.1"]
                  [ring/ring-json "0.2.0"]
                  [compojure "1.1.6"]
-                 [cheshire "5.2.0"]
+                 [cheshire "5.3.1"]
                  ;; CLJS
                  [org.clojure/clojurescript "0.0-2173"]
                  [org.clojure/core.async "0.1.267.0-0d7780-alpha"]
-                 [cljs-http "0.1.3"]
+                 [cljs-http "0.1.8"]
                  [reagent "0.4.1"]]
 
   :plugins [[lein-cljsbuild "1.0.2"]

@@ -14,16 +14,18 @@
    :default (concat (map #(cons x %) (combinations xs (dec n)))
                     (combinations xs n))))
 
-(defn cube-geometry [size]
+(defn coord-map-to-coord-vec [{:keys [x y z] :or {x 0 y 0 z 0}}] [x y z])
+(defn cube-geometry []
   (let [dirs [:x :y :z]
         dir-pairs [[[:x :y] :z] [[:y :z] :x] [[:z :x] :y]]
-        coord-map-to-coord-vec (fn [{:keys [x y z] :or {x 0 y 0 z 0}}] [x y z])
-        cvals [0 size]
+
+        cvals [0 1]
         dir-faces (fn [[[d1 d2] d3]]
                     (let [[v00 v01 v10 v11] (for [c-v1 cvals c-v2 cvals] {d1 c-v1 d2 c-v2})
                           f-coords [v00 v10 v11 v01]
-                          positive-face (mapv #(coord-map-to-coord-vec (assoc % d3 (cvals 0))) f-coords)
-                          negative-face (mapv #(coord-map-to-coord-vec (assoc % d3 (cvals 1))) (rseq f-coords))]
+                          positive-face (mapv #(assoc % d3 (cvals 1)) (rseq f-coords))
+                          negative-face (mapv #(assoc % d3 (cvals 0)) f-coords)]
+
                       [d3 {:positive-face positive-face :negative-face negative-face}]))
         faces (into {} (map dir-faces dir-pairs))]
     faces))
@@ -31,22 +33,32 @@
 ;; [step [:x|:y|:z 0|...|n-1 :clockwise|:counter-clockwise]]
 (def ^:dynamic *rotation-op* nil)
 
-(defn cube-piece [{:keys [x y z] :as p} n]
-  (let [n-1 (- n 1)
-        cgeom (cube-geometry (/ 1 n))]
-    {:type :translate :x x :y y :z z
-     :nodes (mapcat
-             (fn [[dir [dir-coord dir-color]]]
-               (let [{:keys [positive-face negative-face]} (cgeom dir)]
-                (cond
-                 (= dir-coord n-1) [{:face positive-face :color dir-color} {:face negative-face}]
-                 (= dir-coord 0) [{:face positive-face} {:face negative-face :color dir-color}]
-                 :default [{:face positive-face} {:face negative-face}])))
-             p)}))
+(defn cube-piece
+  ([]
+     (let [cgeom (cube-geometry)
+           color {:x {:min :red :max :green}
+                  :y {:min :blue :max :yellow}
+                  :z {:min :orange :max :white}}]
+       {:position {}
+        :faces (mapcat (fn [dir]
+                         (let [{:keys [positive-face negative-face]} (cgeom dir)
+                               {:keys [min max]} (color dir)]
+                           [{:face positive-face :normal {dir 1} :color max} {:face negative-face :normal {dir -1} :color min}]))
+                       [:x :y :z])}))
+  ([{[x] :x [y] :y [z] :z :as p} n]
+                    (let [n-1 (- n 1)
+                          cgeom (cube-geometry)]
+                      {:position {:x x :y y :z z}
+                       :faces (mapcat
+                               (fn [[dir [dir-coord dir-color]]]
+                                 (let [{:keys [positive-face negative-face]} (cgeom dir)]
+                                   [(into {:face positive-face :normal {dir 1}} (if (= dir-coord n-1) [[:color dir-color]]))
+                                    (into {:face negative-face :normal {dir -1}} (if (= dir-coord 0) [[:color dir-color]]))])) p)})))
 
-(defn rubiks-cube-scene-graph [{:keys [pieces n] :as rcs}]
-  (map #(cube-piece % n) pieces))
-
+(defn rubiks-cube-geometry [{:keys [pieces n] :as rcs}]
+  (mapv #(cube-piece % n) pieces))
+#_ (def rcs (rubiks-cube-nxnxn 3))
+#_ (def rcs-geom (rubiks-cube-geometry rcs))
 (def dirs [:x :y :z])
 (def sides [[:green :blue] [:white :yellow] [:red :orange]])
 
@@ -101,7 +113,7 @@
   (apply-algorithm rcs (repeatedly num-shuffles #(vector (rand-nth [:x :y :z]) (rand-int n) (rand-nth [:clockwise :counter-clockwise])))))
 
 (let [faces [:front :back :right :left :top :bottom]]
-  (defn face-representation [{:keys [n pieces] :as rcs :or {n 3}}]
+  (defn face-representation [{:keys [n pieces] :as rcs}]
     (let [n-1 (- n 1)
           {:keys [front back right left top bottom]} {:front (fn [x y z] [:front (- n-1 y) x])
                                                       :back (fn [x y z] [:back (- n-1 y) (- n-1 x)])
