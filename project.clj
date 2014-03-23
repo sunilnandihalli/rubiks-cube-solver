@@ -15,7 +15,8 @@
                  [org.clojure/clojurescript "0.0-2173"]
                  [org.clojure/core.async "0.1.267.0-0d7780-alpha"]
                  [cljs-http "0.1.8"]
-                 [reagent "0.4.1"]]
+                 [reagent "0.4.1"]
+                 [prismatic/dommy "0.1.2"]]
 
   :plugins [[lein-cljsbuild "1.0.2"]
             [lein-ring "0.8.7"]

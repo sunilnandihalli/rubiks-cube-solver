@@ -1,5 +1,8 @@
 (ns rubiks-cloact-webapp.core
+  (:require-macros
+   [cljs.core.async.macros :refer [go]])
   (:require
+   [cljs.core.async :as async :refer [onto-chan put! chan alts! <! >!]]
    [rubiks-cloact-webapp.solver :as s]
    [rubiks-cloact-webapp.cube :as c]
    [reagent.core :as reagent :refer [atom]]))
@@ -18,8 +21,8 @@
   (let [x-meta (meta x)
         new-x-meta (into {} (map #(let [f (% x-meta)]
                                      [% (fn [& args]
-                                          (js/console.log (clj->js {% args}))
                                           (println {% args :component-name component-name})
+                                          (js/console.log (clj->js {% (clj->js args)}))
                                           (cond
                                            f (apply f args)
                                            (= % :should-component-update) true))])
@@ -33,7 +36,21 @@
                                    :component-will-unmount]))]
     (with-meta x new-x-meta)))
 
-(let [app-state (reagent/atom (new-random-init-state))]
+(let [app-state (reagent/atom (new-random-init-state))
+      render-chan (chan)]
+  (go
+   (loop [rcs nil]
+     (let [[op val] (<! render-chan)]
+       (println {:op op :val val})
+       (case op
+         :reset (let [rcs val]
+                  (render-rubiks-cube "current-state" rcs)
+                  (recur rcs))
+         :apply (let [{[dir coord orientation :as op] :op :keys [animation-duration num-steps] :or {animation-duration 1.0 num-steps 30}} val
+                      rcs (c/apply-algorithm rcs [op])]
+                  (render-rubiks-cube "current-state" rcs)
+                  (recur rcs))
+         (recur rcs)))))
   (defn current-state-updater [move-id]
     (fn [& s]
       (let [{:keys [current-state last-move-applied solution] :as app-state-val} @app-state]
@@ -45,30 +62,26 @@
                                                                                              (reverse (subvec solution (inc move-id) (inc last-move-applied))))
                                                          :default [])
                                                   new-current-state (c/apply-algorithm current-state (map second moves))]
+                                              (go (onto-chan render-chan (map (fn [[_ op]] [:apply {:op op}]) moves) false))
                                               new-current-state)
                              :last-move-applied move-id))))))
-
   (defn solve-rubiks-cube []
     (let [{:keys [shuffled-state]} @app-state
           solution (s/solve-rubiks-cube shuffled-state)]
       (swap! app-state (fn [app-state-val] (assoc app-state-val :solution solution :last-move-applied -1)))))
 
   (defn shuffle-rubiks-cube []
-    (swap! app-state (fn [& _] (new-random-init-state))))
+    (let [x (new-random-init-state)]
+      (swap! app-state (fn [& _] x))
+      (go (>! render-chan [:reset (:current-state x)]))))
 
   (defn main-page []
     (let [{:keys [shuffled-state current-state orientation solution]} @app-state]
       [:div
-       [(instrument
-         (let [f #(render-rubiks-cube "shuffled-state" shuffled-state)]
-           (with-meta rubiks-cube
-             {:component-did-mount f}))
-         "shuffled-state") {:rubiks-cube-state shuffled-state :orientation  orientation :canvas-id "shuffled-state"}]
-       [(instrument
-         (let [f #(render-rubiks-cube "state-after-selected-move" current-state)]
-           (with-meta rubiks-cube
-             {:component-did-mount f}))
-         "state-after-selected-move") {:rubiks-cube-state current-state :orientation orientation :canvas-id "state-after-selected-move"}]
+       [(let [f-original #(render-rubiks-cube "state-after-selected-move" current-state)
+              f (fn [& x])]
+          (with-meta rubiks-cube
+            {:component-did-mount f})) {:rubiks-cube-state current-state :orientation orientation :canvas-id "state-after-selected-move"}]
        [show-solution {:solution solution}]
        [:button {:on-click shuffle-rubiks-cube} "shuffle"]
        [:button {:on-click solve-rubiks-cube} "solve"]])))
@@ -105,19 +118,25 @@
                                                             :indices (js/Float32Array. (clj->js [v0 v1 v2 v0 v2 v3]))
                                                             :positions (js/Float32Array. (clj->js (apply concat positions)))}])}) faces)}))]
   (defn render-rubiks-cube [canvas-id {:keys [n] :as rcs}]
-    (js/SceneJS.createScene
-     (clj->js {:type "scene" :id (str "scene-" canvas-id) :canvasId canvas-id
-               :nodes [{:type "cameras/orbit"
-                        :yaw 1
-                        :pitch 1
-                        :zoom 3.0
-                        :zoomSensitivity 1.0
-                        :eye {:x 2 :y 2 :z 2}
-                        :look {:x 0 :y 0 :z 0}
-                        :nodes [{:type "translate" :x -0.5 :y -0.5 :z -0.5
-                                 :nodes [(let [s (/ 1.0 n)]
-                                           {:type "scale" :x s :y s :z s
-                                            :nodes (mapv piece-sg (c/rubiks-cube-geometry rcs))})]}]}]}))))
+    (let [scene-id (str "scene-" canvas-id)
+          scene (if-let [scene-x (js/SceneJS.getScene scene-id)]
+                  (do
+                    (.removeNodes scene-x)
+                    scene-x)
+                  (js/SceneJS.createScene (clj->js {:type "scene" :id scene-id :canvasId canvas-id})))
+          camera-node (clj->js {:type "cameras/orbit"
+                                :parent scene
+                                :yaw 1
+                                :pitch 1
+                                :zoom 3.0
+                                :zoomSensitivity 1.0
+                                :eye {:x 2 :y 2 :z 2}
+                                :look {:x 0 :y 0 :z 0}
+                                :nodes [{:type "translate" :x -0.5 :y -0.5 :z -0.5
+                                         :nodes [(let [s (/ 1.0 n)]
+                                                   {:type "scale" :x s :y s :z s
+                                                    :nodes (mapv piece-sg (c/rubiks-cube-geometry rcs))})]}]})]
+      (.addNode scene camera-node))))
 
 
 
@@ -128,8 +147,7 @@
            (map (fn [table-row]
                   (into [:tr]
                         (mapv (fn [x] [:td (if x [rubiks-cube-face {:face (frcs x)}])])
-                              table-row))) layout))
-     [:canvas {:id canvas-id :width 600 :height 400}]]))
+                              table-row))) layout))]))
 
 (defn show-solution [{:keys [solution orientation]}]
   (let [color :blue]
@@ -137,15 +155,18 @@
            [:h3  "click to see the state of the cube after applying all the transformations up-to and including clicked transformation" [:br]]]
           (map (fn [[move-id [dir coord orientation]]]
                  [:span {:key move-id
-                         :title (str move-id " [ " (name dir) " " coord " " (name orientation) " ]")
+                         :title (if (< move-id 0) "start"
+                                  (str move-id " [ " (name dir) " " coord " " (name orientation) " ]"))
                          :on-click (current-state-updater move-id)
-                         :style {:margin-right "5px" :font-size "16pt" :width "3em" :height "1em" :margin-left "5px" :margin-top "3px" :margin-bottom "3px"
-                                 :display :inline-block :border (str "10px solid " (name color)) :padding "2px"}} (str (name dir) " " coord " "
-                                                                                                                   (if (= orientation :clockwise) "\u21BB" "\u21BA"))]) solution))))
-
+                         :style {:margin-right "5px" :font-size "16pt" :width "3em" :height "1em"
+                                 :margin-left "5px" :margin-top "3px" :margin-bottom "3px"
+                                 :display :inline-block :border (str "10px solid " (name color)) :padding "2px"}}
+                  (if (< move-id 0) "start"
+                      (str (name dir) " " coord " " (if (= orientation :clockwise) "\u21BB" "\u21BA")))])
+               (cons [-1 [nil nil nil]] solution)))))
 
 (defn ^:export run []
   (js/SceneJS.setDebugConfigs (clj->js {:shading {:whitewash true :logScripts true}
                                         :webgl {:logTrace true}
                                         :pluginPath "js/scenejs/plugins"}))
-  (reagent/render-component [main-page] (.-body js/document)))
+  (reagent/render-component [main-page] (. js/document (getElementById "reactjs-content"))))
