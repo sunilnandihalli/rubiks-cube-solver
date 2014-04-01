@@ -7,15 +7,15 @@
                  [org.clojure/math.combinatorics "0.0.7"]
                  [org.clojure/core.logic "0.8.7"]
                  ;; CLJ
-                 [ring/ring-core "1.2.1"]
-                 [ring/ring-json "0.2.0"]
+                 [ring/ring-core "1.2.2"]
+                 [ring/ring-json "0.3.0"]
                  [compojure "1.1.6"]
                  [cheshire "5.3.1"]
                  ;; CLJS
-                 [org.clojure/clojurescript "0.0-2173"]
+                 [org.clojure/clojurescript "0.0-2197"]
                  [org.clojure/core.async "0.1.267.0-0d7780-alpha"]
-                 [cljs-http "0.1.8"]
-                 [reagent "0.4.1"]
+                 [cljs-http "0.1.9"]
+                 [reagent "0.4.2"]
                  [prismatic/dommy "0.1.2"]]
 
   :plugins [[lein-cljsbuild "1.0.2"]
