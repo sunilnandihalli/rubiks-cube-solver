@@ -93,10 +93,7 @@
   (defn main-page []
     (let [{:keys [shuffled-state current-state orientation solution]} @app-state]
       [:div
-       [(let [f-original #(render-rubiks-cube "state-after-selected-move" current-state)
-              f (fn [& x])]
-          (with-meta rubiks-cube
-            {:component-did-mount f})) {:rubiks-cube-state current-state :orientation orientation :canvas-id "state-after-selected-move"}]
+       [rubiks-cube {:rubiks-cube-state current-state :orientation orientation :canvas-id "state-after-selected-move"}]
        [show-solution {:solution solution}]
        [:button {:on-click shuffle-rubiks-cube} "shuffle"]
        [:button {:on-click solve-rubiks-cube} "solve"]]))
@@ -105,7 +102,6 @@
              (case op
                :reset (do
                         (render-rubiks-cube "current-state" val)
-                        (c/display val)
                         (recur val))
                :apply (let [{:keys [n]} rcs
                             rotate-op-callback-fn-channel (chan)
@@ -154,7 +150,7 @@
                                                                                               (doseq [id ["pre-rotate-translate-op" "rotate-op" "post-rotate-translate-op"]]
                                                                                                 (.getNode scene id (fn [n] (.splice n))))
                                                                                               (close! applying-op-done))
-                                                                                            (.setAngle node (+ angle (case orientation :clockwise -1 :counter-clockwise 1))))))]
+                                                                                            (.setAngle node (+ angle (let [d 30] (case orientation :clockwise (- d) :counter-clockwise d)))))))]
                                                                  (go (>! tick-rotater-chan tick-rotater))))]
                                       (myaddnodes node (clj->js others))
                                       (.addNode node (clj->js (into (assoc {:x 1.5 :y 1.5 :z 1.5} dir 0)
@@ -208,8 +204,6 @@
                                                               :indices (js/Float32Array. (clj->js [v0 v1 v2 v0 v2 v3]))
                                                               :positions (js/Float32Array. (clj->js (apply concat positions)))}])})) faces)}))]
   (defn render-rubiks-cube [canvas-id {:keys [n] :as rcs}]
-    (js/console.log "render-rubiks-cube")
-    (js/console.log (js/Date.))
     (let [scene-id (str "scene-" canvas-id)
           scene (if-let [scene-x (js/SceneJS.getScene scene-id)]
                   (do
