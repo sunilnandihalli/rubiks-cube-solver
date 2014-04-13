@@ -16,6 +16,8 @@
 
 (declare rubiks-cube show-solution render-rubiks-cube)
 (defn myaddnodes [nd children]
+  (js/console.log nd)
+  (js/console.log children)
   (.addNodes nd children))
 (def trf {:counter-clockwise {:z [[0 -1 0] [1 0 0] [0 0 1]]
                               :y [[0 0 1] [0 1 0] [-1 0 0]]
@@ -93,8 +95,8 @@
   (defn main-page []
     (let [{:keys [shuffled-state current-state orientation solution]} @app-state]
       [:div
-       [rubiks-cube {:rubiks-cube-state current-state :orientation orientation :canvas-id "state-after-selected-move"}]
-       [show-solution {:solution solution}]
+       [(instrument rubiks-cube "rubiks-cube") {:rubiks-cube-state current-state :orientation orientation :canvas-id "state-after-selected-move"}]
+       [(instrument show-solution "show-solution") {:solution solution}]
        [:button {:on-click shuffle-rubiks-cube} "shuffle"]
        [:button {:on-click solve-rubiks-cube} "solve"]]))
   (go-loop [rcs nil]
