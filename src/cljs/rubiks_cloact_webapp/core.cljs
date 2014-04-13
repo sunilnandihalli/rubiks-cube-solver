@@ -150,7 +150,7 @@
                                                                                               (doseq [id ["pre-rotate-translate-op" "rotate-op" "post-rotate-translate-op"]]
                                                                                                 (.getNode scene id (fn [n] (.splice n))))
                                                                                               (close! applying-op-done))
-                                                                                            (.setAngle node (+ angle (let [d 30] (case orientation :clockwise (- d) :counter-clockwise d)))))))]
+                                                                                            (.setAngle node (+ angle (let [d 10] (case orientation :clockwise (- d) :counter-clockwise d)))))))]
                                                                  (go (>! tick-rotater-chan tick-rotater))))]
                                       (myaddnodes node (clj->js others))
                                       (.addNode node (clj->js (into (assoc {:x 1.5 :y 1.5 :z 1.5} dir 0)
@@ -212,8 +212,8 @@
                   (js/SceneJS.createScene (clj->js {:type "scene" :id scene-id :canvasId canvas-id})))
           camera-node (clj->js {:type "cameras/orbit"
                                 :parent scene
-                                :yaw 1
-                                :pitch 1
+                                :yaw 315
+                                :pitch 30
                                 :zoom 3.0
                                 :zoomSensitivity 1.0
                                 :eye {:x 2 :y 2 :z 2}
