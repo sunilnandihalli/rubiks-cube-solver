@@ -20,11 +20,6 @@
       goog.require("rubiks_cloact_webapp.core");
     </script>
     <script>
-      console.log("setting context loss listeners");
-      SceneJS.on("webglcontextlost", function (params) {console.log("WebGL context lost on scene " + params.scene.id);});
-      SceneJS.on("webglcontextrestored", function (params) {console.log("WebGL context restored on scene " + params.scene.id);});
-    </script>
-    <script>
       rubiks_cloact_webapp.core.run();
     </script>
   </body>

@@ -16,7 +16,6 @@
 
 (declare rubiks-cube show-solution render-rubiks-cube)
 (defn myaddnodes [nd children & markers]
-  (if markers (println markers))
   (.addNodes nd children))
 
 (def trf {:counter-clockwise {:z [[0 -1 0] [1 0 0] [0 0 1]]
@@ -63,6 +62,19 @@
                                    :component-did-update :component-will-unmount]))]
     (with-meta x new-x-meta)))
 
+(defn sleep [ms]
+  (let [now #(.getTime (js/Date.))
+        delta 5000
+        stime (now)]
+    (loop [time-spent 0 last-print 0]
+      (let [ctime (now)]
+        (if (>= (- time-spent last-print) delta)
+         (do
+          (println "slept for " time-spent)
+          (recur (- ctime stime) (+ last-print delta)))
+         (if (> ms time-spent)
+           (recur (- ctime stime) last-print)
+           (println "finished sleeping for " ms "milliseconds")))))))
 
 (let [x (new-random-init-state)
       app-state (reagent/atom x)
@@ -101,98 +113,62 @@
        [:button {:on-click solve-rubiks-cube} "solve"]]))
   (go-loop [rcs nil]
            (let [[op val] (<! render-chan)]
-             (println op)
-             (if-let [scene (js/SceneJS.getScene)]
-               (.getNode scene "rubiks-cube-pieces" (fn [nd]
-                                                      (when (not= 26 (.-length (.-nodes nd)))
-                                                        (println "processing new op")
-                                                        (js/console.log nd)
-                                                        (throw "error")))))
              (case op
                :reset (do
                         (render-rubiks-cube "current-state" val)
-                        (.getNode (js/SceneJS.getScene) "rubiks-cube-pieces" (fn [nd]
-                                                               (when (not= 26 (.-length (.-nodes nd)))
-                                                                 (println "finished processing op")
-                                                                 (js/console.log nd)
-                                                                 (throw "error"))))
                         (recur val))
                :apply (let [{:keys [n]} rcs
-                            rotate-op-callback-fn-channel (chan)
                             cube-size n
                             scene (js/SceneJS.getScene)
-                            {[dir coord orientation :as op] :op :keys [animation-duration num-steps] :or {animation-duration 1.0 num-steps 30}} val
-                             interval (/ animation-duration num-steps)
+                            {[dir coord orientation :as op] :op} val
                              get-coord (case dir :x #(.getX %) :y #(.getY %) :z #(.getZ %))
                              group-fn #(if (= (get-coord %) coord) :to-be-rotated :others)
-                             new-rcs (go (c/apply-algorithm rcs [op]))
-                             applying-op-done (chan)
-                             cleanup-done (chan)
-                             tick-rotater-chan (chan)
-                             mysplit (fn [s sep]
-                                       (.split s sep))
-                             get-face-color (fn [n]
-                                              [(keyword (.pop (mysplit (.-id n) "-"))) (.getColor n)])
+                             rcp-node (.getNode scene "rubiks-cube-pieces")
+                             {:keys [to-be-rotated others]} (group-by group-fn (.disconnectNodes rcp-node))
+                             new-rcs (c/apply-algorithm rcs [op])
+                             mysplit #(.split %1 %2)
+                             get-face-color (fn [n] [(keyword (.pop (mysplit (.-id n) "-"))) (.getColor n)])
                              set-face-color (fn [new-colors]
                                               (fn [nd-face]
                                                 (let [dir (keyword (.pop (mysplit (.-id nd-face) "-")))]
-                                                  (.setColor nd-face (new-colors dir)))))]
-                        (println {:transform val})
-                        (.getNode scene "rubiks-cube-pieces"
-                                  (fn [node]
-                                    (let [{:keys [to-be-rotated others]} (group-by group-fn (.disconnectNodes node))
-                                          _ (when (or (not to-be-rotated) (not others))
-                                              (js/console.log node)
-                                              (js/console.log (clj->js to-be-rotated))
-                                              (js/console.log (clj->js others))
-                                              (throw "error"))
-                                          rotate-op-callback (fn [node]
-                                                               (let [tick-rotater (.on scene "tick"
-                                                                                       #(let [angle (.getAngle node)]
-                                                                                          (if (>= (abs angle) 90)
-                                                                                            (let [trf (fn [pos [dir _ ort]]
-                                                                                                        (let [mat (-> trf ort dir)
-                                                                                                              ret (spmult mat pos cube-size)]
-                                                                                                          ret))
-                                                                                                  trf-node (fn [nd]
-                                                                                                             (let [colors (into {} (map get-face-color (.-nodes nd)))
-                                                                                                                   pos-in [(.getX nd) (.getY nd) (.getZ nd)]
-                                                                                                                   [x y z :as pos-out] (trf pos-in op)
-                                                                                                                   [dir _ ort] op]
-                                                                                                               (.setXYZ nd (clj->js {:x x :y y :z z}))
-                                                                                                               (let [rotated-colors (rotate colors dir ort)
-                                                                                                                     color-setter (set-face-color rotated-colors)]
-                                                                                                                 (doseq [face-node (.-nodes nd)]
-                                                                                                                   (color-setter face-node)))))]
-                                                                                              (doseq [x to-be-rotated]
-                                                                                                (trf-node x))
-                                                                                              (doseq [id ["pre-rotate-translate-op" "rotate-op" "post-rotate-translate-op"]]
-                                                                                                (.getNode scene id (fn [n] (.splice n))))
-                                                                                              (close! applying-op-done))
-                                                                                            (.setAngle node (+ angle (let [d 10] (case orientation :clockwise (- d) :counter-clockwise d)))))))]
-                                                                 (go (>! tick-rotater-chan tick-rotater))))]
-                                      (myaddnodes node (clj->js others)  "myaddnodes 159 others")
-                                      (.addNode node (clj->js (into (assoc {:x 1.5 :y 1.5 :z 1.5} dir 0)
-                                                                    {:type "translate" :id "post-rotate-translate-op"
-                                                                     :nodes [(into (assoc {:x 0 :y 0 :z 0} dir 1)
-                                                                                   {:type "rotate" :id "rotate-op" :angle 0
-                                                                                    :nodes [(into (assoc {:x -1.5 :y -1.5 :z -1.5} dir 0)
-                                                                                                  {:type "translate" :id "pre-rotate-translate-op"})]})]})))
-
-                                      (.getNode scene "pre-rotate-translate-op" (let [nodes-to-be-rotated (clj->js to-be-rotated)]
-                                                                                  #(myaddnodes % nodes-to-be-rotated "myaddnodes 166 pre-rotate-translate-op")))
-                                      (.getNode scene "rotate-op" rotate-op-callback)
-                                      (go (<! applying-op-done)
-                                          (.off scene (<! tick-rotater-chan))
-                                          (close! cleanup-done)))))
-                        (let [nrcs (<! new-rcs)]
-                          (<! cleanup-done)
-                          (.getNode (js/SceneJS.getScene) "rubiks-cube-pieces" (fn [nd]
-                                                                 (when (not= 26 (.-length (.-nodes nd)))
-                                                                   (println "finished processing op")
-                                                                   (js/console.log nd)
-                                                                   (throw "error"))))
-                          (recur nrcs)))))))
+                                                  (.setColor nd-face (new-colors dir)))))
+                             put-rcs-sg-in-non-rotating-cfg #(let [trf (fn [pos [dir _ ort]]
+                                                                         (let [mat (-> trf ort dir)]
+                                                                           (spmult mat pos cube-size)))
+                                                                   trf-node (fn [nd]
+                                                                              (let [colors (into {} (map get-face-color (.-nodes nd)))
+                                                                                    pos-in [(.getX nd) (.getY nd) (.getZ nd)]
+                                                                                    [x y z :as pos-out] (trf pos-in op)
+                                                                                    [dir _ ort] op
+                                                                                    rotated-colors (rotate colors dir ort)
+                                                                                    color-setter (set-face-color rotated-colors)]
+                                                                                (.setXYZ nd (clj->js {:x x :y y :z z}))
+                                                                                (mapv color-setter (.-nodes nd))))]
+                                                               (mapv trf-node to-be-rotated)
+                                                               (doseq [id ["pre-rotate-translate-op" "rotate-op" "post-rotate-translate-op"]]
+                                                                 (.splice (.getNode scene id))))
+                             put-rcs-sg-in-rotating-cfg #(let [nd rcp-node]
+                                                           (.addNodes nd (clj->js others))
+                                                           (.addNode nd (clj->js (into (assoc {:x 1.5 :y 1.5 :z 1.5} dir 0)
+                                                                                       {:type "translate" :id "post-rotate-translate-op"
+                                                                                        :nodes [(into (assoc {:x 0 :y 0 :z 0} dir 1)
+                                                                                                      {:type "rotate" :id "rotate-op" :angle 0
+                                                                                                       :nodes [(into (assoc {:x -1.5 :y -1.5 :z -1.5} dir 0)
+                                                                                                                     {:type "translate"
+                                                                                                                      :id "pre-rotate-translate-op"})]})]})))
+                                                           (.addNodes (.getNode scene "pre-rotate-translate-op") (clj->js to-be-rotated)))]
+                        (put-rcs-sg-in-rotating-cfg)
+                        (let [nd (.getNode scene "rotate-op")
+                              finished-current-rotate-op (chan)
+                              tick-rotate-cb-id  (.on scene "tick"
+                                                      #(let [angle (.getAngle nd)]
+                                                         (if (>= (abs angle) 90)
+                                                           (close! finished-current-rotate-op)
+                                                           (.setAngle nd ((case orientation :clockwise - :counter-clockwise +) angle 5)))))]
+                          (<! finished-current-rotate-op)
+                          (.off scene tick-rotate-cb-id))
+                        (put-rcs-sg-in-non-rotating-cfg)
+                        (recur new-rcs))))))
 
 (defn square-color [{:keys [color]}]
   [:span {:style {:margin "2px" :border "1px solid black" :width "30px" :height "30px" :display :inline-block :background-color color}}])
